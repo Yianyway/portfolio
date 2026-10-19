@@ -1,0 +1,36 @@
+backend:
+  name: github
+  repo: Yianyway/portfolio
+  branch: main
+media_folder: "public/images/uploads"
+public_folder: "/images/uploads"
+
+collections:
+  - name: "projects"
+    label: "项目作品"
+    folder: "content/projects"
+    create: true
+    slug: "{{title}}"
+    fields:
+      - {label: "项目名称", name: "title", widget: "string"}
+      - {label: "发布日期", name: "date", widget: "datetime"}
+      - {label: "简介", name: "description", widget: "text"}
+      - {label: "封面图", name: "cover", widget: "image"}
+      - {label: "技术栈", name: "tech", widget: "list"}
+      - {label: "正文（可贴原理图、图片、链接）", name: "body", widget: "markdown"}
+
+  - name: "about"
+    label: "关于我"
+    file: "content/about.md"
+    create: false
+    fields:
+      - {label: "标题", name: "title", widget: "string"}
+      - {label: "个人介绍", name: "body", widget: "markdown"}
+
+  - name: "resume"
+    label: "简历"
+    file: "content/resume.md"
+    create: false
+    fields:
+      - {label: "简历下载链接", name: "pdfurl", widget: "string"}
+      - {label: "补充说明", name: "body", widget: "markdown"}
