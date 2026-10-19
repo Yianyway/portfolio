@@ -2,6 +2,7 @@ backend:
   name: github
   repo: Yianyway/portfolio
   branch: main
+  client_id: Ov23liuYCvbq6fURRzAS
 media_folder: "public/images/uploads"
 public_folder: "/images/uploads"
 
