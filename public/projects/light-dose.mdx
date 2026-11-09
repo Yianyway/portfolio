@@ -1,0 +1,45 @@
+---
+title: 可穿戴光剂量测量模块
+description: 基于 TLSR8250 BLE SoC 的光剂量采集终端，覆盖传感器驱动、SPI Flash 页缓存与自定义 BLE 帧协议。
+date: 2026-01-15
+---
+
+## 系统概述
+
+可穿戴环境光剂量采集终端，2 s 周期采样，12 B/条定长记录，外部 SPI Flash 页缓存存储，按键触发 BLE 短时广播与数据同步。设备侧完成光环境采集、记录打包、Flash 持久化与 BLE 传输；App 侧按自定义帧协议接收记录并解析状态位。
+
+**角色**：硬件工程师（嵌入式固件/驱动方向）  
+**时间**：2025.09 – 2026.01  
+**技术栈**：TLSR8250 / VEML6030 / LIS2DW12 / SPI Flash / BLE SDK
+
+## 硬件要点
+
+- VEML6030 采用 PD3 高边门控，采样时上电，100 ms 积分完成后断电。
+- VEML6030 与 LIS2DW12 共享 I2C 总线，地址分别为 `0x48` 与 `0x19`。
+- 外部 SPI Flash 采用 256 B 页缓存，20 条记录/页，4 KB 扇区擦除。
+- 电池电压经 ADC 分压采样，记录中保存最近一次电池编码。
+
+## 固件要点
+
+- 软件 I2C 时序 + 9-clock 总线恢复，处理传感器异常拉低总线。
+- VEML6030 首帧丢弃，避免上电未稳定数据进入积分。
+- LIS2DW12 双地址探测、CTRL 配置与三轴差分加速度读取。
+- 12 B 记录：时间戳 + ALS raw + 加速度 + 状态位 + 电池编码 + CRC16。
+- BLE 自定义帧：`session / seq / type / len / payload / CRC32`。
+- 基于 SPP Notify 发送记录，结合 BLE TX FIFO 水位做流控。
+
+## 记录打包片段
+
+```c
+static void build_record(u8 *rec, const sensor_sample_t *s)
+{
+    u32 ts = s_time_reliable ? s_unix_time : (s_sample_index * 2);
+    rec[0] = ts & 0xFF; rec[1] = (ts >> 8) & 0xFF;
+    rec[2] = (ts >> 16) & 0xFF; rec[3] = (ts >> 24) & 0xFF;
+    rec[4] = s->als_raw & 0xFF; rec[5] = (s->als_raw >> 8) & 0xFF;
+    rec[6] = s->accel_mg & 0xFF; rec[7] = (s->accel_mg >> 8) & 0xFF;
+    rec[8] = build_status(s);
+    rec[9] = (s_vbat_mv == 0xFFFF) ? 0xFF : (u8)(s_vbat_mv / 16);
+    u16 crc = crc16_ccitt_false(rec, 10);
+    rec[10] = crc & 0xFF; rec[11] = (crc >> 8) & 0xFF;
+}
